@@ -1,5 +1,4 @@
-<!DOCTYPE html>
-<html>
+<!DOCTYPE html><html>
 <head>
   <title>ID Search</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -36,16 +35,17 @@
       width: 100%;
       max-width: 400px;
       display: flex;
+      flex-direction: column;
       gap: 10px;
       justify-content: center;
       margin-bottom: 20px;
     }
     input[type="text"] {
-      flex: 1;
       padding: 12px;
       border: 1px solid #ccc;
       border-radius: 10px;
       font-size: 16px;
+      text-align: center;
     }
     button#searchBtn {
       padding: 12px 16px;
@@ -55,6 +55,7 @@
       color: white;
       font-size: 14px;
       cursor: pointer;
+      width: 100%;
     }
     button#searchBtn:hover {
       background: #005f8e;
@@ -194,7 +195,7 @@
 <body>
   <div class="header">
     <h2>EMPLOYEE INFORMATION UNIT</h2>
-    <p>EC UNIT<strong>Enter</strong> or click <strong>Search</strong></p>
+    <p>ELECTRICITY UNIT </br>TEACHING HOSPITAL POLONNARUWA<strong></strong><strong></strong></p>
   </div>
   <div class="card">
     <div class="input-section">
@@ -202,9 +203,7 @@
       <button id="searchBtn" onclick="searchID()">Search</button>
     </div>
     <div id="result"></div>
-  </div>
-
-  <script>
+  </div>  <script>
     const data = {
      "10289": {
         name: "W.D SULAKSHANA PRAMOD WEERASINGHE",
@@ -303,6 +302,5 @@
         searchID();
       }
     });
-  </script>
-</body>
+  </script></body>
 </html>
