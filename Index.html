@@ -1,0 +1,217 @@
+<!DOCTYPE html><html>
+<head>
+  <title>EMPLOYEE INFORMATION HUB</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
+  <style>
+    body { font-family: 'Segoe UI', sans-serif; background: #f1f4f8; margin: 0; padding: 20px; }
+    .header { text-align: center; margin-bottom: 30px; }
+    .header h2 { margin: 0; margin-bottom: 30px; color: #0077b6; }
+    .header p { margin: 5; line-height: 0.9; }
+    .card { background: #fff; border-radius: 20px; padding: 30px 25px; max-width: 700px; margin: auto; box-shadow: 0 8px 20px rgba(0,0,0,0.05); display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 300px; }
+    .input-section { width: 100%; max-width: 400px; display: flex; flex-direction: column; gap: 10px; justify-content: center; margin-bottom: 20px; }
+    input[type="text"] { padding: 12px; border: 1px solid #ccc; border-radius: 10px; font-size: 16px; text-align: center; }
+    button#searchBtn { padding: 12px 16px; border: none; border-radius: 10px; background: #0077b6; color: white; font-size: 14px; cursor: pointer; width: 100%; }
+    button#searchBtn:hover { background: #005f8e; }
+    
+    /* Error message එක මැදට කිරීමට මෙම කොටස වෙනස් කරන ලදි */
+    #result { padding: 40px 0; width: 100%; text-align: center; } 
+    
+    #printArea { max-width: 500px; margin: auto; text-align: left; } /* දත්ත පෙන්වන විට නැවත වමට (Left) පෙළගස්වයි */
+    
+    #printArea label { font-weight: bold; display: block; margin-top: 12px; font-size: 16px; }
+    .name-container { position: relative; margin-top: 12px; padding-right: 80px; }
+    .eidc-emoji-link { position: absolute; top: 0; right: 0; font-size: 64px; text-decoration: none; display: flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1; }
+    .eidc-emoji-link span { font-size: 16px; font-weight: bold; margin-bottom: 2px; color: #333; }
+    .pdf-links { display: flex; flex-wrap: nowrap; overflow-x: auto; gap: 10px; margin-top: 30px; padding-bottom: 5px; justify-content: center; align-items: center; scrollbar-width: none; border-top: 2px dashed #333; padding-top: 20px; margin-top: 30px; }
+    .pdf-links::-webkit-scrollbar { display: none; }
+    .pdf-card { width: 70px; min-width: 70px; padding: 8px 4px; background: #ffffff; border-radius: 10px; text-align: center; text-decoration: none; color: #000; border: 1.5px solid #e0e0e0; transition: all 0.2s ease-in-out; font-size: 11px; flex-shrink: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+    .pdf-card:hover, .pdf-card:focus, .pdf-card:active { background-color: #f0faff; border: 1.5px solid #0077b6; outline: none; }
+    .pdf-icon-container { width: 30px; height: 30px; margin-bottom: 4px; display: flex; align-items: center; justify-content: center; }
+    .pdf-icon-container svg { width: 100%; height: 100%; fill: #0077b6; }
+    .pdf-label { font-size: 14px; font-weight: 600; line-height: 1.3; text-align: center; }
+    #barcode-wrapper { text-align: center; margin-top: 30px; }
+    #barcode-text { font-size: 12px; margin-top: 5px; }
+    #serviceDuration { font-weight: normal; display: block; margin-top: 5px; font-size: 16px; }
+    .status-container { margin-bottom: 40px; text-align: center; width: 100%; }
+    #statusLabel { font-weight: bold; padding: 6px 15px; border-radius: 8px; color: white; font-size: 16px; text-transform: uppercase; display: inline-block; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+    .status-active { background-color: #28a745; }
+    .status-cancelled { background-color: #dc3545; }
+    #activeTimeDisplay { font-weight: bold; color: white; }
+
+    @media print {
+      body * { visibility: hidden; }
+      #printArea, #printArea * { visibility: visible; }
+      #printArea { position: absolute; top: 0; left: 0; width: 100%; }
+      .pdf-card, #printBtn, .input-section { display: none !important; }
+      #barcode-wrapper { position: absolute; top: 20px; right: 20px; width: 150px; }
+      #barcode { width: 150px !important; height: 60px !important; }
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h2>EMPLOYEE INFORMATION HUB</h2>
+    <p><strong>ELECTRICITY UNIT <br><br>TEACHING HOSPITAL POLONNARUWA</strong></p>
+  </div>
+  <div class="card">
+    <div class="input-section">
+      <input type="text" id="idInput" placeholder="Enter your ID number">
+      <button id="searchBtn" onclick="searchID()">Search</button>
+    </div>
+    <div id="result"></div>
+  </div>
+
+  <script>
+    let serviceDurationInterval;
+    let activeTimeInterval; 
+    let employeeData = {};
+    let isCurrentlySearching = false;
+
+    const API_URL = "https://script.google.com/macros/s/AKfycbwAwNEZsC2N4VStoB6JW_eVeeRLIYEGL-LDPd7ZAVN6NLzJAfZ7_VuaI5Mk4szVtGZW/exec";
+
+    async function initData() {
+        try {
+            const response = await fetch(API_URL);
+            employeeData = await response.json();
+            const idInput = document.getElementById("idInput").value.trim();
+            if (idInput && employeeData[idInput] && isCurrentlySearching) {
+                renderResult(idInput);
+            }
+        } catch (e) { console.error("Database Refresh Error", e); }
+    }
+
+    window.onload = () => {
+        initData();
+        setInterval(initData, 30000); 
+    };
+
+    const svgIcons = {
+        nic: `<svg viewBox="0 0 24 24"><path d="M4 6h16v12H4z" fill="none" stroke="#0077b6" stroke-width="2"/><path d="M7 10h10" stroke="#0077b6" stroke-width="2" stroke-linecap="round"/><path d="M7 14h6" stroke="#0077b6" stroke-width="2" stroke-linecap="round"/><circle cx="15" cy="14" r="2" fill="#0077b6"/></svg>`,
+        birth: `<svg viewBox="0 0 24 24"><path d="M19 4h-3V2h-2v2H8V2H6v2H5c-1.11 0-1.99.9-1.99 2L3 20a2 2 0 002 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zM5 20V9h14v11H5z"/><circle cx="12" cy="14" r="3"/></svg>`,
+        education: `<svg viewBox="0 0 24 24"><path d="M12 3L1 9l11 6 9-4.91V17h2V9L12 3zm6.65 11.32L12 17.65 5.35 14.32V10.7l6.65 3.32 6.65-3.33v3.63z" fill="#0077b6"/></svg>`
+    };
+
+    function calculateTimeDifference(startDate, endDate) {
+        const now = endDate;
+        const joinDate = startDate;
+        let years = now.getFullYear() - joinDate.getFullYear();
+        let months = now.getMonth() - joinDate.getMonth();
+        let day = now.getDate() - joinDate.getDate();
+        if (day < 0) { months--; const prevMonth = new Date(now.getFullYear(), now.getMonth(), 0).getDate(); day += prevMonth; }
+        if (months < 0) { years--; months += 12; }
+        return { years, months, day };
+    }
+
+    function updateServiceDuration(person) {
+        if (serviceDurationInterval) clearInterval(serviceDurationInterval);
+        const joinDate = new Date(person.joinDate);
+        const isCancelled = person.status && person.status.toString().toLowerCase().trim() === "cancelled";
+        const terminationDate = (isCancelled && person.leaveDate) ? new Date(person.leaveDate) : null;
+        
+        function calculateAndDisplay() {
+            const durationElement = document.getElementById("serviceDuration");
+            if (!durationElement) return;
+            durationElement.style.color = isCancelled ? "#dc3545" : "#005f8e";
+            let calcDate = (isCancelled && terminationDate) ? (new Date() > terminationDate ? terminationDate : new Date()) : new Date();
+            const d = calculateTimeDifference(joinDate, calcDate);
+            durationElement.textContent = `${d.years} Years | ${d.months} Months | ${d.day} Days`;
+        }
+        calculateAndDisplay();
+        serviceDurationInterval = setInterval(calculateAndDisplay, 1000);
+    }
+
+    function formatDateTime(dateObject) {
+        if (!dateObject || isNaN(dateObject)) return { formattedDate: '', formattedTime: '' };
+        const year = dateObject.getFullYear();
+        const month = String(dateObject.getMonth() + 1).padStart(2, '0');
+        const day = String(dateObject.getDate()).padStart(2, '0');
+        let hours = dateObject.getHours();
+        const minutes = String(dateObject.getMinutes()).padStart(2, '0');
+        const seconds = String(dateObject.getSeconds()).padStart(2, '0');
+        const ampm = hours >= 12 ? 'PM' : 'AM';
+        hours = hours % 12 || 12;
+        return { formattedDate: `${year}/${month}/${day}`, formattedTime: `${String(hours).padStart(2, '0')}:${minutes}:${seconds} ${ampm}` };
+    }
+
+    function updateActiveTimeDisplay() {
+        const timeDisplayElement = document.getElementById('activeTimeDisplay');
+        if (!timeDisplayElement) return;
+        const formatted = formatDateTime(new Date());
+        timeDisplayElement.textContent = ` | Active Work Date : ${formatted.formattedDate} - (${formatted.formattedTime})`;
+    }
+
+    function searchID() {
+        const id = document.getElementById("idInput").value.trim();
+        const resultDiv = document.getElementById("result");
+        if (!id) {
+            resultDiv.innerHTML = `<span style="color:red; font-weight:bold;">Please enter an ID number.</span>`;
+            return;
+        }
+        isCurrentlySearching = true;
+        renderResult(id);
+    }
+
+    function renderResult(id) {
+      const resultDiv = document.getElementById("result");
+      const person = employeeData[id];
+      
+      if (person) {
+        let pdfHTML = `<div class="pdf-links">`;
+        person.pdfs.forEach(pdf => {
+          if (pdf.url && pdf.url.length > 5) {
+            let iconHTML = pdf.name.includes("NIC") ? svgIcons.nic : pdf.name.includes("Birth") ? svgIcons.birth : svgIcons.education;
+            let labelText = pdf.name.includes("NIC") ? "NIC Card Information" : pdf.name.includes("Birth") ? "Birth Day Certificate" : pdf.name;
+            pdfHTML += `<a href="${pdf.url}" target="_blank" class="pdf-card"><div class="pdf-icon-container">${iconHTML}</div><div class="pdf-label">${labelText}</div></a>`;
+          }
+        });
+        pdfHTML += `</div>`;
+
+        const isCancelled = person.status && person.status.toString().toLowerCase().trim() === "cancelled";
+        const statusClass = isCancelled ? "status-cancelled" : "status-active";
+        const statusText = isCancelled ? "CANCELLED (අවලංගුයි)" : "ACTIVE (ක්‍රියාකාරී)";
+        
+        let resignTimeHTML = "";
+        if (isCancelled && person.leaveDate) {
+            const resignDateObj = new Date(person.leaveDate);
+            resignDateObj.setHours(7, 0, 0, 0); 
+            const formatted = formatDateTime(resignDateObj);
+            resignTimeHTML = ` | RESIGN Date : ${formatted.formattedDate} - (${formatted.formattedTime})`;
+        } else {
+            resignTimeHTML = `<span id="activeTimeDisplay"></span>`;
+        }
+
+        resultDiv.innerHTML = `
+          <div id="printArea">
+            <div class="status-container"><span id="statusLabel" class="${statusClass}">${statusText}${resignTimeHTML}</span></div>
+            <div class="name-container">
+              <label>Name</label>
+              <a href="${isCancelled ? '#' : person.companyLink}" ${isCancelled ? '' : 'target="_blank"'} class="eidc-emoji-link" style="${isCancelled ? 'opacity:0.5;cursor:not-allowed;' : ''}"><span>EID CARD</span>🪪</a>
+              ${person.name}
+            </div>
+            <label>NIC Number</label> ${person.nic}
+            <label>Address</label> ${person.address}
+            <label>Date of Birth</label> ${person.dob}
+            <label>Phone Number</label> ${person.phone}
+            <label>Company Join Date</label> ${person.joinDate}
+            <label>Service Duration</label> <span id="serviceDuration">Calculating...</span>
+            ${pdfHTML}
+            <div id="barcode-wrapper"><svg id="barcode"></svg><div id="barcode-text">Scan NIC Barcode</div></div>
+          </div>`;
+
+        JsBarcode("#barcode", person.nic, { format: "CODE128", width: 2, height: 60, displayValue: true });
+        updateServiceDuration(person);
+        if (!isCancelled) { 
+            if (activeTimeInterval) clearInterval(activeTimeInterval);
+            activeTimeInterval = setInterval(updateActiveTimeDisplay, 1000); 
+            updateActiveTimeDisplay(); 
+        }
+      } else {
+        resultDiv.innerHTML = `<span style="color:red; font-weight:bold;">No data found for ID <b>${id}</b>.</span>`;
+      }
+    }
+
+    document.getElementById("idInput").addEventListener("keypress", (e) => { if (e.key === "Enter") searchID(); });
+  </script>
+</body>
+</html>
