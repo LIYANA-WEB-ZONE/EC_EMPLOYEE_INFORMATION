@@ -17,19 +17,51 @@
     #result { padding: 40px 0; width: 100%; text-align: center; } 
     #printArea { max-width: 500px; margin: auto; text-align: left; } 
     
-    /* මාතෘකා සහ විස්තර අතර පරතරය මෙතැනින් පාලනය වේ */
     #printArea label { 
       font-weight: bold; 
       display: block; 
-      margin-top: 18px;    /* ඊළඟ කොටසට ඇති පරතරය */
-      margin-bottom: 5px; /* මාතෘකාව සහ විස්තරය අතර පරතරය (වැඩි කරන ලදි) */
+      margin-top: 18px;    
+      margin-bottom: 5px; 
       font-size: 16px; 
       color: #333;
     }
 
     .name-container { position: relative; margin-top: 12px; padding-right: 80px; }
-    .eidc-emoji-link { position: absolute; top: 0; right: 0; font-size: 64px; text-decoration: none; display: flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1; }
-    .eidc-emoji-link span { font-size: 16px; font-weight: bold; margin-bottom: 2px; color: #333; }
+
+    /* EID CARD Button - චලනය වන කොටස (transform) ඉවත් කර ඇත */
+    .eidc-emoji-link { 
+      position: absolute; 
+      top: 0; 
+      right: 0; 
+      text-decoration: none; 
+      display: flex; 
+      flex-direction: column; 
+      align-items: center; 
+      justify-content: center; 
+      line-height: 1.1;
+      background: #ffffff;
+      border: 1.5px solid #0077b6;
+      border-radius: 10px;
+      padding: 6px 4px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+      width: 65px; 
+      transition: background 0.2s ease; /* චලනය වෙනුවට වර්ණය පමණක් වෙනස් වේ */
+    }
+    
+    .eidc-emoji-link:hover { 
+      background: #f0faff; /* ස්පර්ශයේදී වර්ණය පමණක් වෙනස් වේ, චලනය නොවේ */
+    }
+
+    .eidc-emoji-link span { 
+      font-size: 10px; 
+      font-weight: 800; 
+      margin-bottom: 2px; 
+      color: #0077b6; 
+      text-align: center;
+      white-space: nowrap;
+    }
+    .eidc-emoji-link-icon { font-size: 28px; }
+
     .pdf-links { display: flex; flex-wrap: nowrap; overflow-x: auto; gap: 10px; margin-top: 30px; padding-bottom: 5px; justify-content: center; align-items: center; scrollbar-width: none; border-top: 2px dashed #333; padding-top: 20px; }
     .pdf-links::-webkit-scrollbar { display: none; }
     .pdf-card { width: 70px; min-width: 70px; padding: 8px 4px; background: #ffffff; border-radius: 10px; text-align: center; text-decoration: none; color: #000; border: 1.5px solid #e0e0e0; transition: all 0.2s ease-in-out; font-size: 11px; flex-shrink: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
@@ -50,7 +82,7 @@
       body * { visibility: hidden; }
       #printArea, #printArea * { visibility: visible; }
       #printArea { position: absolute; top: 0; left: 0; width: 100%; }
-      .pdf-card, #printBtn, .input-section { display: none !important; }
+      .pdf-card, #printBtn, .input-section, .eidc-emoji-link { display: none !important; }
       #barcode-wrapper { position: absolute; top: 20px; right: 20px; width: 150px; }
       #barcode { width: 150px !important; height: 60px !important; }
     }
@@ -176,7 +208,7 @@
 
         const isCancelled = person.status && person.status.toString().toLowerCase().trim() === "cancelled";
         const statusClass = isCancelled ? "status-cancelled" : "status-active";
-        const statusText = isCancelled ? "CANCELLED (අවලංගුයි)" : "ACTIVE (ක්‍රියාකාරී)";
+        const statusText = isCancelled ? "CANCELLED" : "ACTIVE";
         
         let resignTimeHTML = "";
         if (isCancelled && person.leaveDate) {
@@ -193,7 +225,10 @@
             <div class="status-container"><span id="statusLabel" class="${statusClass}">${statusText}${resignTimeHTML}</span></div>
             <div class="name-container">
               <label>Name</label>
-              <a href="${isCancelled ? '#' : person.companyLink}" ${isCancelled ? '' : 'target="_blank"'} class="eidc-emoji-link" style="${isCancelled ? 'opacity:0.5;cursor:not-allowed;' : ''}"><span>EID CARD</span>🪪</a>
+              <a href="${isCancelled ? '#' : person.companyLink}" ${isCancelled ? '' : 'target="_blank"'} class="eidc-emoji-link" style="${isCancelled ? 'opacity:0.5;cursor:not-allowed;' : ''}">
+                <span>EID CARD</span>
+                <div class="eidc-emoji-link-icon">🪪</div>
+              </a>
               <span>${person.name}</span>
             </div>
             <label>NIC Number</label> <span>${person.nic}</span>
