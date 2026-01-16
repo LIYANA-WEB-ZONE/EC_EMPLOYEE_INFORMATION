@@ -15,8 +15,49 @@
     button#searchBtn:hover { background: #005f8e; }
     
     #result { padding: 40px 0; width: 100%; text-align: center; } 
-    #printArea { max-width: 500px; margin: auto; text-align: left; } 
+    #printArea { max-width: 500px; margin: auto; text-align: left; position: relative; } 
     
+    .profile-container { 
+      text-align: center; 
+      margin-top: 40px;    
+      margin-bottom: 50px; 
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .profile-photo {
+      width: 100px; 
+      height: 110px; 
+      border-radius: 8px; 
+      object-fit: cover;
+      border: 2px solid #0077b6;
+      display: block;
+      margin-bottom: 15px;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    }
+    .profile-name-display {
+      font-size: 20px;
+      font-weight: bold;
+      color: #0077b6;
+      text-transform: uppercase; 
+      margin-top: 10px;
+      letter-spacing: 0.8px;
+      position: relative;
+      padding-bottom: 15px;
+      display: inline-block;
+    }
+    
+    /* කඩඉරේ දිග 350px දක්වා වැඩි කරන ලදි */
+    .profile-name-display::after {
+      content: "";
+      position: absolute;
+      bottom: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 320px; 
+      border-bottom: 2px dashed #000000;
+    }
+
     #printArea label { 
       font-weight: bold; 
       display: block; 
@@ -28,7 +69,6 @@
 
     .name-container { position: relative; margin-top: 12px; padding-right: 80px; }
 
-    /* EID CARD Button - චලනය වන කොටස (transform) ඉවත් කර ඇත */
     .eidc-emoji-link { 
       position: absolute; 
       top: 0; 
@@ -45,21 +85,11 @@
       padding: 6px 4px;
       box-shadow: 0 2px 5px rgba(0,0,0,0.1);
       width: 65px; 
-      transition: background 0.2s ease; /* චලනය වෙනුවට වර්ණය පමණක් වෙනස් වේ */
+      transition: background 0.2s ease;
     }
     
-    .eidc-emoji-link:hover { 
-      background: #f0faff; /* ස්පර්ශයේදී වර්ණය පමණක් වෙනස් වේ, චලනය නොවේ */
-    }
-
-    .eidc-emoji-link span { 
-      font-size: 10px; 
-      font-weight: 800; 
-      margin-bottom: 2px; 
-      color: #0077b6; 
-      text-align: center;
-      white-space: nowrap;
-    }
+    .eidc-emoji-link:hover { background: #f0faff; }
+    .eidc-emoji-link span { font-size: 10px; font-weight: 800; margin-bottom: 2px; color: #0077b6; text-align: center; white-space: nowrap; }
     .eidc-emoji-link-icon { font-size: 28px; }
 
     .pdf-links { display: flex; flex-wrap: nowrap; overflow-x: auto; gap: 10px; margin-top: 30px; padding-bottom: 5px; justify-content: center; align-items: center; scrollbar-width: none; border-top: 2px dashed #333; padding-top: 20px; }
@@ -72,7 +102,7 @@
     #barcode-wrapper { text-align: center; margin-top: 30px; }
     #barcode-text { font-size: 12px; margin-top: 5px; }
     #serviceDuration { font-weight: normal; display: block; margin-top: 5px; font-size: 16px; }
-    .status-container { margin-bottom: 40px; text-align: center; width: 100%; }
+    .status-container { margin-bottom: 20px; text-align: center; width: 100%; }
     #statusLabel { font-weight: bold; padding: 6px 15px; border-radius: 8px; color: white; font-size: 16px; text-transform: uppercase; display: inline-block; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
     .status-active { background-color: #28a745; }
     .status-cancelled { background-color: #dc3545; }
@@ -82,7 +112,7 @@
       body * { visibility: hidden; }
       #printArea, #printArea * { visibility: visible; }
       #printArea { position: absolute; top: 0; left: 0; width: 100%; }
-      .pdf-card, #printBtn, .input-section, .eidc-emoji-link { display: none !important; }
+      .pdf-card, .input-section, .eidc-emoji-link { display: none !important; }
       #barcode-wrapper { position: absolute; top: 20px; right: 20px; width: 150px; }
       #barcode { width: 150px !important; height: 60px !important; }
     }
@@ -102,6 +132,43 @@
   </div>
 
   <script>
+    // --- සේවක දත්ත මෙතනට එක් කරන්න ---
+    const employeeProfiles = {
+
+      "30": {
+        fullName: "VVV",
+        photo: "ECP 30.jpeg" 
+      },
+
+      "31": {
+        fullName: "P.G.M YASIRU ANUHAS RATHNAYAKA BANDARA",
+        photo: "ECP 31.jpeg" 
+      },
+
+
+      "32": {
+        fullName: "O.G AKASH SANSAJITH KUMARA",
+        photo: "ECP 32.jpeg" 
+      },
+
+
+      "33": {
+        fullName: "A.V THANUJA MADHUSHAN ALUDENIYA",
+        photo: "ECP 33.jpeg" 
+      },
+
+      "34": {
+        fullName: "B.G BUDDHIKA PRABHATH BOGAHAWATHTHE",
+        photo: "ECP 34.jpeg" 
+      },
+
+
+      "35": {
+        fullName: "P.W.G PRAMUDITHA MALEESH JAYATHISSA",
+        photo: "ECP 35.jpeg"
+      }
+    };
+
     let serviceDurationInterval;
     let activeTimeInterval; 
     let employeeData = {};
@@ -194,6 +261,10 @@
     function renderResult(id) {
       const resultDiv = document.getElementById("result");
       const person = employeeData[id];
+      const profileInfo = employeeProfiles[id] || { 
+          fullName: person ? person.name : "N/A", 
+          photo: "https://via.placeholder.com/100x110?text=No+Photo" 
+      };
       
       if (person) {
         let pdfHTML = `<div class="pdf-links">`;
@@ -223,8 +294,14 @@
         resultDiv.innerHTML = `
           <div id="printArea">
             <div class="status-container"><span id="statusLabel" class="${statusClass}">${statusText}${resignTimeHTML}</span></div>
+            
+            <div class="profile-container">
+              <img src="${profileInfo.photo}" class="profile-photo" alt="Photo" onerror="this.src='https://via.placeholder.com/100x110?text=Error'">
+              <div class="profile-name-display">${profileInfo.fullName}</div>
+            </div>
+
             <div class="name-container">
-              <label>Name</label>
+              <label>Full Name</label>
               <a href="${isCancelled ? '#' : person.companyLink}" ${isCancelled ? '' : 'target="_blank"'} class="eidc-emoji-link" style="${isCancelled ? 'opacity:0.5;cursor:not-allowed;' : ''}">
                 <span>EID CARD</span>
                 <div class="eidc-emoji-link-icon">🪪</div>
