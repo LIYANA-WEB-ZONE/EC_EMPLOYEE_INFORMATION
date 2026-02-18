@@ -1,0 +1,309 @@
+<!DOCTYPE html><html>
+<head>
+  <title>EMPLOYEE INFORMATION HUB</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
+  <style>
+    body { font-family: 'Segoe UI', sans-serif; background: #f1f4f8; margin: 0; padding: 20px; }
+    .header { text-align: center; margin-bottom: 30px; }
+    .header h2 { margin: 0; margin-bottom: 30px; color: #0077b6; }
+    .header p { margin: 5; line-height: 0.9; }
+    .card { background: #fff; border-radius: 20px; padding: 30px 25px; max-width: 700px; margin: auto; box-shadow: 0 8px 20px rgba(0,0,0,0.05); display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 300px; }
+    .input-section { width: 100%; max-width: 400px; display: flex; flex-direction: column; gap: 10px; justify-content: center; margin-bottom: 20px; }
+    input[type="text"] { padding: 12px; border: 1px solid #ccc; border-radius: 10px; font-size: 16px; text-align: center; width: 100%; box-sizing: border-box; }
+    button#searchBtn { padding: 12px 16px; border: none; border-radius: 10px; background: #0077b6; color: white; font-size: 14px; cursor: pointer; width: 100%; }
+    
+    #result { padding: 20px 0; width: 100%; text-align: center; } 
+    #printArea { max-width: 500px; margin: auto; text-align: left; position: relative; } 
+    
+    .profile-container { text-align: center; margin-top: 40px; margin-bottom: 0px; display: flex; flex-direction: column; align-items: center; }
+    .profile-photo { width: 100px; height: 110px; border-radius: 8px; object-fit: cover; border: 2px solid #0077b6; margin-bottom: 15px; cursor: pointer; background: #eee; }
+    
+    .profile-name-display { font-size: 22px; font-weight: bold; color: #0077b6; text-transform: uppercase; margin-top: 10px; margin-bottom: 5px; width: 100%; text-align: center; }
+
+    .dash-line { width: 100%; max-width: 480px; border-bottom: 2.5px dashed #000; margin: 5px auto 25px auto; display: block; }
+
+    .section-title { font-size: 13px; font-weight: bold; color: #333; margin-top: 25px; margin-bottom: 15px; text-transform: uppercase; border-left: 4px solid #0077b6; padding-left: 10px; width: 100%; text-align: left; }
+    .dashboard-stats { display: flex; justify-content: space-around; align-items: center; width: 100%; margin-bottom: 10px; }
+    .stat-circle-box { text-align: center; width: 33%; position: relative; display: flex; flex-direction: column; align-items: center; }
+    .circle-svg { width: 85px; height: 85px; transform: rotate(-90deg); }
+    .circle-bg { fill: none; stroke: #f0f0f0; stroke-width: 9; }
+    .circle-progress { fill: none; stroke: #28a745; stroke-width: 9; stroke-linecap: round; stroke-dasharray: 238.7; stroke-dashoffset: 238.7; transition: all 1s ease-in-out; }
+    .circle-text { position: absolute; top: 32px; width: 100%; font-size: 15px; font-weight: bold; color: #000; text-align: center; }
+    .circle-label { font-size: 11px; font-weight: 600; margin-top: 8px; color: #555; line-height: 1.2; }
+    
+    #printArea label { font-weight: bold; display: block; margin-top: 15px; font-size: 16px; color: #333; }
+    #printArea span { font-size: 16px; color: #444; display: block; margin-top: 5px; }
+    #serviceDuration { color: #0077b6 !important; font-weight: 600; display: block; margin-bottom: 25px; }
+
+    .pdf-links { display: flex; justify-content: center; gap: 15px; margin-top: 25px; }
+    .pdf-card { background: #fff; border-radius: 12px; text-align: center; border: 1.5px solid #d0d0d0; padding: 12px 5px; width: 115px; text-decoration: none !important; display: flex; flex-direction: column; align-items: center; cursor: pointer; color: inherit; }
+    .pdf-icon-box svg { width: 28px; height: 28px; fill: #0077b6; margin-bottom: 8px; }
+    .pdf-label { font-size: 13.5px; font-weight: bold; color: #000; line-height: 1.2; }
+
+    #barcode-wrapper { text-align: center; margin-top: 35px; }
+    #barcode { max-width: 100%; height: auto; }
+    .barcode-subtext { font-size: 13px; color: #555; margin-top: 8px; }
+
+    .status-container { margin-bottom: 20px; text-align: center; }
+    #statusLabel { font-weight: bold; padding: 6px 15px; border-radius: 8px; color: white !important; font-size: 15px; display: inline-block; background: #28a745; text-transform: uppercase; }
+    #activeTimeDisplay { color: white !important; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h2>EMPLOYEE INFORMATION HUB</h2>
+    <p><strong>ELECTRICITY UNIT <br><br>TEACHING HOSPITAL POLONNARUWA</strong></p>
+  </div>
+  <div class="card">
+    <div class="input-section">
+      <input type="text" id="idInput" placeholder="Enter ID Number" onkeypress="handleKeyPress(event)">
+      <button id="searchBtn" onclick="searchID()">Search</button>
+    </div>
+    <div id="result"></div>
+  </div>
+
+  <script>
+    let employeeData = {}, activeTimeInterval, durationInterval;
+    let currentlyDisplayedId = null; // දැන් පෙන්වන ID එක මතක තබා ගැනීමට
+    const API_URL = "https://script.google.com/macros/s/AKfycbxwMzdXkd125NLmeSBWNlGmp_o1U34wWC8Oeaxbc7egKk_Bj-oGCMWg09Y2lkk1RWbaBA/exec";
+
+    async function initData() {
+        try {
+            const response = await fetch(API_URL);
+            const newData = await response.json();
+            
+            // පැරණි දත්ත සහ අලුත් දත්ත සමානදැයි බලමු
+            const dataChanged = JSON.stringify(employeeData) !== JSON.stringify(newData);
+            employeeData = newData;
+            console.log("Data synced");
+
+            // දත්ත වෙනස් වී ඇත්නම් සහ යම් පුද්ගලයෙකු දැනටමත් පෙන්වමින් සිටී නම් පමණක් update කරන්න
+            if (dataChanged && currentlyDisplayedId && employeeData[currentlyDisplayedId]) {
+                // මෙහිදී මුළු function එකම දුවන්නේ නැතිව අගයන් පමණක් යාවත්කාලීන කිරීම වඩාත් සුදුසුයි
+                // නමුත් පහසුව සඳහා searchID(true) ලෙස හඳුන්වා පිටුව ගැස්සීම පාලනය කරමු
+                updateDisplayedData();
+            }
+        } catch (e) { console.error("Sync error:", e); }
+    }
+
+    window.onload = () => {
+        initData();
+        setInterval(initData, 60000); 
+    };
+
+    function formatDateOnly(dateStr) {
+        if (!dateStr) return "";
+        let d = new Date(dateStr);
+        d.setDate(d.getDate() + 1); 
+        return d.toISOString().split('T')[0];
+    }
+
+    function formatDateTime(date) {
+        let h = date.getHours(), m = String(date.getMinutes()).padStart(2,'0'), s = String(date.getSeconds()).padStart(2,'0'), ampm = h >= 12 ? 'PM' : 'AM';
+        h = h % 12 || 12;
+        return `${date.getFullYear()}/${String(date.getMonth()+1).padStart(2,'0')}/${String(date.getDate()).padStart(2,'0')} - (${String(h).padStart(2,'0')}:${m}:${s} ${ampm})`;
+    }
+
+    function handleKeyPress(event) {
+        if (event.key === "Enter") {
+            searchID();
+        }
+    }
+
+    function getDriveImageUrl(url) {
+        if (!url) return 'https://via.placeholder.com/100x110';
+        if (url.includes('drive.google.com')) {
+            let fileId = "";
+            if (url.includes('/d/')) {
+                fileId = url.split('/d/')[1].split('/')[0].split('?')[0];
+            } else if (url.includes('id=')) {
+                fileId = url.split('id=')[1].split('&')[0];
+            }
+            return fileId ? `https://lh3.googleusercontent.com/d/${fileId}` : url;
+        }
+        return url;
+    }
+
+    function updateServiceDuration(joinDate) {
+        const now = new Date();
+        let y = now.getFullYear() - joinDate.getFullYear();
+        let m = now.getMonth() - joinDate.getMonth();
+        let d = now.getDate() - joinDate.getDate();
+        if(d < 0) { 
+            m--; 
+            let prevMonth = new Date(now.getFullYear(), now.getMonth(), 0).getDate();
+            d += prevMonth; 
+        }
+        if(m < 0) { y--; m += 12; }
+        const sEl = document.getElementById("serviceDuration");
+        if(sEl) sEl.textContent = `${y} Years | ${m} Months | ${d} Days`;
+    }
+
+    // දත්ත refresh වන විට ගැස්සීම වැලැක්වීමට අගයන් පමණක් update කරන ක්‍රමය
+    function updateDisplayedData() {
+        if(!currentlyDisplayedId || !employeeData[currentlyDisplayedId]) return;
+        const person = employeeData[currentlyDisplayedId];
+        
+        // උදාහරණයක් ලෙස පැමිණීමේ වට අගයන් (Circle stats) පමණක් update කරන්න
+        const stats = {
+            "c1": person.dayAtt, "c2": person.nightAtt, "c3": person.leaves,
+            "c4": person.bfast, "c5": person.lunch, "c6": person.dinner
+        };
+        
+        const circ = 238.7;
+        Object.keys(stats).forEach((id, index) => {
+            const el = document.getElementById(id);
+            const textEl = el ? el.parentElement.querySelector('.circle-text') : null;
+            if(el && textEl) {
+                let val = stats[id] || 0;
+                let max = (id === "c3") ? 6 : 25;
+                textEl.textContent = val;
+                el.style.strokeDashoffset = circ - (Math.min(val, max) / max) * circ;
+            }
+        });
+    }
+
+    function searchID() {
+        const id = document.getElementById("idInput").value.trim();
+        const person = employeeData[id];
+        
+        if (!person) {
+            document.getElementById("result").innerHTML = "<p style='color:red;'>EMPLOYEE NOT FOUND</p>";
+            currentlyDisplayedId = null;
+            return; 
+        }
+
+        currentlyDisplayedId = id; // දැනට බලන ID එක සටහන් කරගන්න
+
+        const monthName = new Date().toLocaleString('default', { month: 'long' }).toUpperCase();
+        const fixedDOB = formatDateOnly(person.dob);
+        const fixedJoinDate = formatDateOnly(person.joinDate);
+        const finalPhotoUrl = getDriveImageUrl(person.photo);
+
+        document.getElementById("result").innerHTML = `
+          <div id="printArea">
+            <div class="status-container">
+                <span id="statusLabel">ACTIVE | ACTIVE WORK DATE : <span id="activeTimeDisplay"></span></span>
+            </div>
+            <div class="profile-container">
+              <a href="${person.companyLink || '#'}" target="_blank">
+                <img src="${finalPhotoUrl}" class="profile-photo" onerror="this.src='https://via.placeholder.com/100x110'">
+              </a>
+              <div class="profile-name-display">${person.displayName || person.name}</div>
+              <div class="dash-line"></div>
+              
+              <div class="section-title">සේවක පැමිණීම - ${monthName}</div>
+              <div class="dashboard-stats">
+                  <div class="stat-circle-box">
+                      <svg class="circle-svg"><circle class="circle-bg" cx="42.5" cy="42.5" r="38"/><circle id="c1" class="circle-progress" cx="42.5" cy="42.5" r="38"/></svg>
+                      <div class="circle-text">${person.dayAtt || 0}</div><div class="circle-label">දිවා පැමිණීම</div>
+                  </div>
+                  <div class="stat-circle-box">
+                      <svg class="circle-svg"><circle class="circle-bg" cx="42.5" cy="42.5" r="38"/><circle id="c2" class="circle-progress" cx="42.5" cy="42.5" r="38"/></svg>
+                      <div class="circle-text">${person.nightAtt || 0}</div><div class="circle-label">රාත්‍රී පැමිණීම</div>
+                  </div>
+                  <div class="stat-circle-box">
+                      <svg class="circle-svg"><circle class="circle-bg" cx="42.5" cy="42.5" r="38"/><circle id="c3" class="circle-progress" cx="42.5" cy="42.5" r="38"/></svg>
+                      <div class="circle-text">${person.leaves || 0}</div><div class="circle-label">සේවක නිවාඩු</div>
+                  </div>
+              </div>
+
+              <div class="section-title">සේවක ආහාර - ${monthName}</div>
+              <div class="dashboard-stats">
+                  <div class="stat-circle-box">
+                      <svg class="circle-svg"><circle class="circle-bg" cx="42.5" cy="42.5" r="38"/><circle id="c4" class="circle-progress" cx="42.5" cy="42.5" r="38"/></svg>
+                      <div class="circle-text">${person.bfast || 0}</div><div class="circle-label">උදේ ආහාර</div>
+                  </div>
+                  <div class="stat-circle-box">
+                      <svg class="circle-svg"><circle class="circle-bg" cx="42.5" cy="42.5" r="38"/><circle id="c5" class="circle-progress" cx="42.5" cy="42.5" r="38"/></svg>
+                      <div class="circle-text">${person.lunch || 0}</div><div class="circle-label">දිවා ආහාර</div>
+                  </div>
+                  <div class="stat-circle-box">
+                      <svg class="circle-svg"><circle class="circle-bg" cx="42.5" cy="42.5" r="38"/><circle id="c6" class="circle-progress" cx="42.5" cy="42.5" r="38"/></svg>
+                      <div class="circle-text">${person.dinner || 0}</div><div class="circle-label">රාත්‍රී ආහාර</div>
+                  </div>
+              </div>
+              <div class="dash-line"></div>
+            </div>
+
+            <label>Full Name</label> <span>${person.name}</span>
+            <label>NIC Number</label> <span>${person.nic}</span>
+            <label>Address</label> <span>${person.address}</span>
+            <label>Date of Birth</label> <span>${fixedDOB}</span>
+            <label>Phone Number</label> <span>${person.phone}</span>
+            <label>Employee Position</label> <span>${person.position || 'N/A'}</span>
+            <label>Company Join Date</label> <span>${fixedJoinDate}</span>
+            <label>Service Duration</label> <span id="serviceDuration">Calculating...</span>
+            
+            <div class="dash-line"></div>
+
+            <div class="pdf-links">
+                <a href="${person.nicUrl || '#'}" target="_blank" class="pdf-card">
+                  <div class="pdf-icon-box">
+                    <svg viewBox="0 0 24 24"><path d="M19,3H5C3.89,3 3,3.9 3,5V19C3,20.1 3.89,21 5,21H19C20.1,21 21,20.1 21,19V5C21,3.9 20.1,3 19,3M10,7H14V9H10V7M10,11H14V13H10V11M7,7H9V9H7V7M7,11H9V13H7V11M7,15H17V17H7V15Z" /></svg>
+                  </div>
+                  <div class="pdf-label">NIC Card<br>Information</div>
+                </a>
+                <a href="${person.birthUrl || '#'}" target="_blank" class="pdf-card">
+                  <div class="pdf-icon-box">
+                    <svg viewBox="0 0 24 24"><path d="M19,19H5V8H19M16,1V3H8V1H6V3H5C3.89,3 3,3.89 3,5V19A2,2 0 0,0 5,21H19A2,2 0 0,0 21,19V5C21,3.89 20.1,3 19,3H18V1M17,12H12V17H17V12Z" /></svg>
+                  </div>
+                  <div class="pdf-label">Birth Day<br>Certificate</div>
+                </a>
+                <a href="${person.eduUrl || '#'}" target="_blank" class="pdf-card">
+                  <div class="pdf-icon-box">
+                    <svg viewBox="0 0 24 24"><path d="M12,3L1,9L12,15L21,10.09V17H23V9M5,13.18V17.18L12,21L19,17.18V13.18L12,17L5,13.18Z" /></svg>
+                  </div>
+                  <div class="pdf-label">Education<br>Certificate</div>
+                </a>
+            </div>
+
+            <div id="barcode-wrapper"><svg id="barcode"></svg><div class="barcode-subtext">Scan NIC Barcode</div></div>
+          </div>`;
+
+        JsBarcode("#barcode", person.nic, { format: "CODE128", width: 2.5, height: 55, displayValue: true });
+        
+        const activeTimeEl = document.getElementById("activeTimeDisplay");
+        if(activeTimeEl) activeTimeEl.textContent = formatDateTime(new Date()); 
+
+        if(activeTimeInterval) clearInterval(activeTimeInterval);
+        activeTimeInterval = setInterval(() => {
+          const el = document.getElementById("activeTimeDisplay");
+          if(el) el.textContent = formatDateTime(new Date());
+        }, 1000);
+
+        const joinDate = new Date(fixedJoinDate);
+        updateServiceDuration(joinDate); 
+
+        if(durationInterval) clearInterval(durationInterval);
+        durationInterval = setInterval(() => {
+            updateServiceDuration(joinDate);
+        }, 1000);
+
+        setTimeout(() => {
+            const circ = 238.7; 
+            const setOff = (id, val, max, type) => { 
+              const el = document.getElementById(id);
+              if(!el) return;
+              let currentVal = Math.min(val, max);
+              let color = "#28a745"; 
+              if(type === 'att' || type === 'meal') {
+                if(val >= 25) color = "#ed1c24"; 
+              } else if(type === 'leave') {
+                if(val >= 6) color = "#ed1c24";
+              }
+              el.style.stroke = color;
+              el.style.strokeDashoffset = circ - (currentVal / max) * circ; 
+            };
+            setOff("c1", person.dayAtt || 0, 25, 'att');
+            setOff("c2", person.nightAtt || 0, 25, 'att');
+            setOff("c3", person.leaves || 0, 6, 'leave');
+            setOff("c4", person.bfast || 0, 25, 'meal');
+            setOff("c5", person.lunch || 0, 25, 'meal');
+            setOff("c6", person.dinner || 0, 25, 'meal');
+        }, 100);
+    }
+  </script>
+</body>
+</html>
