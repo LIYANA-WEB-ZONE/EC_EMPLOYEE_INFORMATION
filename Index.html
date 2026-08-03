@@ -29,7 +29,7 @@
     .circle-svg { width: 85px; height: 85px; transform: rotate(-90deg); }
     .circle-bg { fill: none; stroke: #f0f0f0; stroke-width: 9; }
     .circle-progress { fill: none; stroke: #28a745; stroke-width: 9; stroke-linecap: round; stroke-dasharray: 238.7; stroke-dashoffset: 238.7; transition: all 1s ease-in-out; }
-    .circle-text { position: absolute; top: 32px; width: 100%; font-size: 15px; font-weight: bold; color: #000; text-align: center; }
+    .circle-text { position: absolute; top: 18px; width: 100%; font-size: 16px; font-weight: bold; color: #000; text-align: center; display: flex; flex-direction: column; justify-content: center; align-items: center; }
     .circle-label { font-size: 11px; font-weight: 600; margin-top: 8px; color: #555; line-height: 1.2; }
     
     #printArea label { font-weight: bold; display: block; margin-top: 15px; font-size: 16px; color: #333; }
@@ -65,7 +65,7 @@
 
   <script>
     let employeeData = {}, activeTimeInterval, durationInterval;
-    let currentlyDisplayedId = null; // දැන් පෙන්වන ID එක මතක තබා ගැනීමට
+    let currentlyDisplayedId = null;
     const API_URL = "https://script.google.com/macros/s/AKfycbxwMzdXkd125NLmeSBWNlGmp_o1U34wWC8Oeaxbc7egKk_Bj-oGCMWg09Y2lkk1RWbaBA/exec";
 
     async function initData() {
@@ -73,15 +73,10 @@
             const response = await fetch(API_URL);
             const newData = await response.json();
             
-            // පැරණි දත්ත සහ අලුත් දත්ත සමානදැයි බලමු
             const dataChanged = JSON.stringify(employeeData) !== JSON.stringify(newData);
             employeeData = newData;
-            console.log("Data synced");
 
-            // දත්ත වෙනස් වී ඇත්නම් සහ යම් පුද්ගලයෙකු දැනටමත් පෙන්වමින් සිටී නම් පමණක් update කරන්න
             if (dataChanged && currentlyDisplayedId && employeeData[currentlyDisplayedId]) {
-                // මෙහිදී මුළු function එකම දුවන්නේ නැතිව අගයන් පමණක් යාවත්කාලීන කිරීම වඩාත් සුදුසුයි
-                // නමුත් පහසුව සඳහා searchID(true) ලෙස හඳුන්වා පිටුව ගැස්සීම පාලනය කරමු
                 updateDisplayedData();
             }
         } catch (e) { console.error("Sync error:", e); }
@@ -92,11 +87,23 @@
         setInterval(initData, 60000); 
     };
 
-    function formatDateOnly(dateStr) {
-        if (!dateStr) return "";
+    function parseSafeDate(dateStr) {
+        if (!dateStr) return null;
         let d = new Date(dateStr);
-        d.setDate(d.getDate() + 1); 
-        return d.toISOString().split('T')[0];
+        if (!isNaN(d.getTime())) return d;
+
+        // Backup parsing for different string formats (e.g. YYYY/MM/DD or DD-MM-YYYY)
+        let cleanStr = dateStr.toString().replace(/-/g, "/").replace("T", " ").split(".")[0];
+        d = new Date(cleanStr);
+        if (!isNaN(d.getTime())) return d;
+
+        return null;
+    }
+
+    function formatDateOnly(dateStr) {
+        let d = parseSafeDate(dateStr);
+        if (!d) return dateStr || "";
+        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
     }
 
     function formatDateTime(date) {
@@ -126,42 +133,73 @@
     }
 
     function updateServiceDuration(joinDate) {
+        const sEl = document.getElementById("serviceDuration");
+        if (!sEl) return;
+
+        if (!joinDate || isNaN(joinDate.getTime())) {
+            sEl.textContent = "N/A";
+            return;
+        }
+
         const now = new Date();
         let y = now.getFullYear() - joinDate.getFullYear();
         let m = now.getMonth() - joinDate.getMonth();
         let d = now.getDate() - joinDate.getDate();
-        if(d < 0) { 
+
+        if (d < 0) { 
             m--; 
             let prevMonth = new Date(now.getFullYear(), now.getMonth(), 0).getDate();
             d += prevMonth; 
         }
-        if(m < 0) { y--; m += 12; }
-        const sEl = document.getElementById("serviceDuration");
-        if(sEl) sEl.textContent = `${y} Years | ${m} Months | ${d} Days`;
+        if (m < 0) { 
+            y--; 
+            m += 12; 
+        }
+
+        if (y < 0) {
+            sEl.textContent = "0 Years | 0 Months | 0 Days";
+        } else {
+            sEl.textContent = `${y} Years | ${m} Months | ${d} Days`;
+        }
     }
 
-    // දත්ත refresh වන විට ගැස්සීම වැලැක්වීමට අගයන් පමණක් update කරන ක්‍රමය
+    function renderCircleValue(circleId, textId, val, max, isMeal) {
+        const circleEl = document.getElementById(circleId);
+        const textEl = document.getElementById(textId);
+        const circ = 238.7;
+
+        if (!circleEl || !textEl) return;
+
+        if (isMeal && (val === 100 || val === 200)) {
+            if (val === 100) {
+                textEl.innerHTML = '<span style="color:#28a745; font-size:24px; font-weight:bold; line-height:1;">&#10004;</span>' +
+                                   '<span style="color:#28a745; font-size:10px; font-weight:800; margin-top:2px; line-height:1; letter-spacing:0.5px;">PAID</span>';
+            } else if (val === 200) {
+                textEl.innerHTML = '<span style="color:#dc3545; font-size:24px; font-weight:bold; line-height:1;">&#10006;</span>' +
+                                   '<span style="color:#dc3545; font-size:9px; font-weight:800; margin-top:2px; line-height:1; letter-spacing:0.5px;">NOT PAID</span>';
+            }
+            circleEl.style.stroke = "#ff9800"; 
+            circleEl.style.strokeDashoffset = "0"; 
+        } else {
+            textEl.innerHTML = `<span style="font-size:16px; margin-top:10px;">${val}</span>`;
+            let currentVal = Math.min(val, max);
+            let color = "#28a745";
+            if (val >= max) color = "#ed1c24";
+            circleEl.style.stroke = color;
+            circleEl.style.strokeDashoffset = circ - (currentVal / max) * circ;
+        }
+    }
+
     function updateDisplayedData() {
-        if(!currentlyDisplayedId || !employeeData[currentlyDisplayedId]) return;
+        if (!currentlyDisplayedId || !employeeData[currentlyDisplayedId]) return;
         const person = employeeData[currentlyDisplayedId];
         
-        // උදාහරණයක් ලෙස පැමිණීමේ වට අගයන් (Circle stats) පමණක් update කරන්න
-        const stats = {
-            "c1": person.dayAtt, "c2": person.nightAtt, "c3": person.leaves,
-            "c4": person.bfast, "c5": person.lunch, "c6": person.dinner
-        };
-        
-        const circ = 238.7;
-        Object.keys(stats).forEach((id, index) => {
-            const el = document.getElementById(id);
-            const textEl = el ? el.parentElement.querySelector('.circle-text') : null;
-            if(el && textEl) {
-                let val = stats[id] || 0;
-                let max = (id === "c3") ? 6 : 25;
-                textEl.textContent = val;
-                el.style.strokeDashoffset = circ - (Math.min(val, max) / max) * circ;
-            }
-        });
+        renderCircleValue("c1", "t1", Number(person.dayAtt) || 0, 25, false);
+        renderCircleValue("c2", "t2", Number(person.nightAtt) || 0, 25, false);
+        renderCircleValue("c3", "t3", Number(person.leaves) || 0, 6, false);
+        renderCircleValue("c4", "t4", Number(person.bfast) || 0, 25, true);
+        renderCircleValue("c5", "t5", Number(person.lunch) || 0, 25, true);
+        renderCircleValue("c6", "t6", Number(person.dinner) || 0, 25, true);
     }
 
     function searchID() {
@@ -174,7 +212,7 @@
             return; 
         }
 
-        currentlyDisplayedId = id; // දැනට බලන ID එක සටහන් කරගන්න
+        currentlyDisplayedId = id;
 
         const monthName = new Date().toLocaleString('default', { month: 'long' }).toUpperCase();
         const fixedDOB = formatDateOnly(person.dob);
@@ -190,22 +228,22 @@
               <a href="${person.companyLink || '#'}" target="_blank">
                 <img src="${finalPhotoUrl}" class="profile-photo" onerror="this.src='https://via.placeholder.com/100x110'">
               </a>
-              <div class="profile-name-display">${person.displayName || person.name}</div>
+              <div class="profile-name-display">${person.displayName || person.name || ''}</div>
               <div class="dash-line"></div>
               
               <div class="section-title">සේවක පැමිණීම - ${monthName}</div>
               <div class="dashboard-stats">
                   <div class="stat-circle-box">
                       <svg class="circle-svg"><circle class="circle-bg" cx="42.5" cy="42.5" r="38"/><circle id="c1" class="circle-progress" cx="42.5" cy="42.5" r="38"/></svg>
-                      <div class="circle-text">${person.dayAtt || 0}</div><div class="circle-label">දිවා පැමිණීම</div>
+                      <div class="circle-text" id="t1">0</div><div class="circle-label">දිවා පැමිණීම</div>
                   </div>
                   <div class="stat-circle-box">
                       <svg class="circle-svg"><circle class="circle-bg" cx="42.5" cy="42.5" r="38"/><circle id="c2" class="circle-progress" cx="42.5" cy="42.5" r="38"/></svg>
-                      <div class="circle-text">${person.nightAtt || 0}</div><div class="circle-label">රාත්‍රී පැමිණීම</div>
+                      <div class="circle-text" id="t2">0</div><div class="circle-label">රාත්‍රී පැමිණීම</div>
                   </div>
                   <div class="stat-circle-box">
                       <svg class="circle-svg"><circle class="circle-bg" cx="42.5" cy="42.5" r="38"/><circle id="c3" class="circle-progress" cx="42.5" cy="42.5" r="38"/></svg>
-                      <div class="circle-text">${person.leaves || 0}</div><div class="circle-label">සේවක නිවාඩු</div>
+                      <div class="circle-text" id="t3">0</div><div class="circle-label">සේවක නිවාඩු</div>
                   </div>
               </div>
 
@@ -213,25 +251,25 @@
               <div class="dashboard-stats">
                   <div class="stat-circle-box">
                       <svg class="circle-svg"><circle class="circle-bg" cx="42.5" cy="42.5" r="38"/><circle id="c4" class="circle-progress" cx="42.5" cy="42.5" r="38"/></svg>
-                      <div class="circle-text">${person.bfast || 0}</div><div class="circle-label">උදේ ආහාර</div>
+                      <div class="circle-text" id="t4">0</div><div class="circle-label">උදේ ආහාර</div>
                   </div>
                   <div class="stat-circle-box">
                       <svg class="circle-svg"><circle class="circle-bg" cx="42.5" cy="42.5" r="38"/><circle id="c5" class="circle-progress" cx="42.5" cy="42.5" r="38"/></svg>
-                      <div class="circle-text">${person.lunch || 0}</div><div class="circle-label">දිවා ආහාර</div>
+                      <div class="circle-text" id="t5">0</div><div class="circle-label">දිවා ආහාර</div>
                   </div>
                   <div class="stat-circle-box">
                       <svg class="circle-svg"><circle class="circle-bg" cx="42.5" cy="42.5" r="38"/><circle id="c6" class="circle-progress" cx="42.5" cy="42.5" r="38"/></svg>
-                      <div class="circle-text">${person.dinner || 0}</div><div class="circle-label">රාත්‍රී ආහාර</div>
+                      <div class="circle-text" id="t6">0</div><div class="circle-label">රාත්‍රී ආහාර</div>
                   </div>
               </div>
               <div class="dash-line"></div>
             </div>
 
-            <label>Full Name</label> <span>${person.name}</span>
-            <label>NIC Number</label> <span>${person.nic}</span>
-            <label>Address</label> <span>${person.address}</span>
+            <label>Full Name</label> <span>${person.name || ''}</span>
+            <label>NIC Number</label> <span>${person.nic || ''}</span>
+            <label>Address</label> <span>${person.address || ''}</span>
             <label>Date of Birth</label> <span>${fixedDOB}</span>
-            <label>Phone Number</label> <span>${person.phone}</span>
+            <label>Phone Number</label> <span>${person.phone || ''}</span>
             <label>Employee Position</label> <span>${person.position || 'N/A'}</span>
             <label>Company Join Date</label> <span>${fixedJoinDate}</span>
             <label>Service Duration</label> <span id="serviceDuration">Calculating...</span>
@@ -262,7 +300,13 @@
             <div id="barcode-wrapper"><svg id="barcode"></svg><div class="barcode-subtext">Scan NIC Barcode</div></div>
           </div>`;
 
-        JsBarcode("#barcode", person.nic, { format: "CODE128", width: 2.5, height: 55, displayValue: true });
+        try {
+            if (typeof JsBarcode !== 'undefined' && person.nic) {
+                JsBarcode("#barcode", person.nic, { format: "CODE128", width: 2.5, height: 55, displayValue: true });
+            }
+        } catch(e) {
+            console.error("Barcode Error:", e);
+        }
         
         const activeTimeEl = document.getElementById("activeTimeDisplay");
         if(activeTimeEl) activeTimeEl.textContent = formatDateTime(new Date()); 
@@ -273,36 +317,19 @@
           if(el) el.textContent = formatDateTime(new Date());
         }, 1000);
 
-        const joinDate = new Date(fixedJoinDate);
+        const joinDate = parseSafeDate(person.joinDate);
         updateServiceDuration(joinDate); 
 
         if(durationInterval) clearInterval(durationInterval);
-        durationInterval = setInterval(() => {
-            updateServiceDuration(joinDate);
-        }, 1000);
+        if(joinDate) {
+            durationInterval = setInterval(() => {
+                updateServiceDuration(joinDate);
+            }, 1000);
+        }
 
         setTimeout(() => {
-            const circ = 238.7; 
-            const setOff = (id, val, max, type) => { 
-              const el = document.getElementById(id);
-              if(!el) return;
-              let currentVal = Math.min(val, max);
-              let color = "#28a745"; 
-              if(type === 'att' || type === 'meal') {
-                if(val >= 25) color = "#ed1c24"; 
-              } else if(type === 'leave') {
-                if(val >= 6) color = "#ed1c24";
-              }
-              el.style.stroke = color;
-              el.style.strokeDashoffset = circ - (currentVal / max) * circ; 
-            };
-            setOff("c1", person.dayAtt || 0, 25, 'att');
-            setOff("c2", person.nightAtt || 0, 25, 'att');
-            setOff("c3", person.leaves || 0, 6, 'leave');
-            setOff("c4", person.bfast || 0, 25, 'meal');
-            setOff("c5", person.lunch || 0, 25, 'meal');
-            setOff("c6", person.dinner || 0, 25, 'meal');
-        }, 100);
+            updateDisplayedData();
+        }, 50);
     }
   </script>
 </body>
